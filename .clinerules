@@ -1,0 +1,6 @@
+# Reglas de Arquitectura y Ejecución
+1. Lee `docs/SPEC.md` antes de escribir o modificar código. Es la fuente de la verdad.
+2. Tu trabajo se rige por `docs/TASKS.md`. Ejecuta estrictamente la tarea actual y marca con `[x]` al terminarla.
+3. No instales dependencias que no estén autorizadas en `SPEC.md`.
+4. Manten el código tipado, modular y aplica manejo de errores explícito.
+5. No modifiques la arquitectura base sin pedir autorización explícita.

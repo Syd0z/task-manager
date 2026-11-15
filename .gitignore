@@ -1,0 +1,14 @@
+# Entornos y compilación
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+dist/
+build/
+
+# IDE y SO
+.vscode/
+.idea/
+*.DS_Store
+.env
