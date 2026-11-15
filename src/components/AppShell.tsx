@@ -5,6 +5,7 @@ import {
   Plus,
   RefreshCw,
   FolderGit2,
+  Trash2,
 } from "lucide-react";
 import { useGoalStore } from "@/store/useGoalStore";
 import { Progress } from "@/components/ui/progress";
@@ -21,12 +22,14 @@ import { cn } from "@/lib/utils";
 
 interface AppShellProps {
   onCreateFile?: (filename: string, title: string) => void;
+  onDeleteFile?: (filename: string) => void;
   onRefreshFiles?: () => void;
   children: React.ReactNode;
 }
 
 export function AppShell({
   onCreateFile,
+  onDeleteFile,
   onRefreshFiles,
   children,
 }: AppShellProps) {
@@ -64,22 +67,22 @@ export function AppShell({
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {/* Sidebar */}
-      <aside className="w-72 shrink-0 border-r border-border bg-muted/30 flex flex-col">
-        <div className="p-4 border-b border-border flex items-center justify-between">
+      {/* Sidebar in Deep Navy Blue */}
+      <aside className="w-72 shrink-0 border-r border-border bg-card/90 flex flex-col shadow-xl">
+        <div className="p-4 border-b border-border bg-secondary/40 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FolderGit2 className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-sm tracking-tight">
+            <FolderGit2 className="h-5 w-5 text-primary drop-shadow-[0_0_6px_rgba(0,255,65,0.45)]" />
+            <span className="font-semibold text-sm tracking-tight text-foreground">
               Superobjetivos
             </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             {onRefreshFiles && (
               <button
                 type="button"
                 onClick={onRefreshFiles}
                 title="Sincronizar y recargar archivos"
-                className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
               >
                 <RefreshCw className="h-4 w-4" />
               </button>
@@ -89,14 +92,16 @@ export function AppShell({
                 <button
                   type="button"
                   title="Nuevo Superobjetivo"
-                  className="p-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                  className="p-1.5 rounded-md bg-primary text-primary-foreground shadow-[0_0_10px_rgba(0,255,65,0.3)] hover:opacity-90 transition-opacity"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="border-border bg-card text-foreground">
                 <DialogHeader>
-                  <DialogTitle>Nuevo Superobjetivo</DialogTitle>
+                  <DialogTitle className="text-primary">
+                    Nuevo Superobjetivo
+                  </DialogTitle>
                   <DialogDescription>
                     Crea un nuevo archivo Markdown local con Frontmatter validado.
                   </DialogDescription>
@@ -110,7 +115,7 @@ export function AppShell({
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.currentTarget.value)}
                       placeholder="Ej. Lanzamiento Producto Q4"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       required
                     />
                   </div>
@@ -122,13 +127,13 @@ export function AppShell({
                       value={newFilename}
                       onChange={(e) => setNewFilename(e.currentTarget.value)}
                       placeholder="Ej. lanzamiento-q4.md"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
                   <DialogFooter>
                     <button
                       type="submit"
-                      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                      className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
                     >
                       Crear archivo
                     </button>
@@ -139,10 +144,13 @@ export function AppShell({
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-2 space-y-1" aria-label="Lista de archivos">
+        <nav
+          className="flex-1 overflow-y-auto p-2 space-y-1.5"
+          aria-label="Lista de archivos"
+        >
           {allFilenames.length === 0 ? (
             <div className="px-3 py-8 text-center text-xs text-muted-foreground">
-              No hay archivos `.md` en el directorio local.
+              No hay archivos `.md` en el directorio de objetivos.
             </div>
           ) : (
             allFilenames.map((filename) => {
@@ -152,15 +160,21 @@ export function AppShell({
               const progress = doc ? getDocumentProgress(filename) : 0;
 
               return (
-                <button
+                <div
                   key={filename}
-                  type="button"
                   onClick={() => setActiveFilename(filename)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      setActiveFilename(filename);
+                    }
+                  }}
                   className={cn(
-                    "w-full text-left rounded-md px-3 py-2.5 text-sm transition-colors flex flex-col gap-1.5",
+                    "group w-full text-left rounded-md px-3 py-2.5 text-sm transition-all flex flex-col gap-1.5 cursor-pointer border",
                     isActive
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "hover:bg-accent/50 text-muted-foreground hover:text-foreground"
+                      ? "bg-accent/90 border-primary/50 text-foreground font-medium shadow-[inset_2px_0_0_0_hsl(var(--primary))]"
+                      : "border-transparent hover:bg-secondary/70 hover:border-border text-muted-foreground hover:text-foreground"
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -168,23 +182,43 @@ export function AppShell({
                       {isCorrupted ? (
                         <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
                       ) : (
-                        <FileText className="h-4 w-4 shrink-0 text-primary" />
+                        <FileText
+                          className={cn(
+                            "h-4 w-4 shrink-0",
+                            isActive ? "text-primary" : "text-blue-400"
+                          )}
+                        />
                       )}
                       <span className="truncate">
                         {doc ? doc.frontmatter.title : filename}
                       </span>
                     </div>
-                    {!isCorrupted && (
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {progress}%
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {!isCorrupted && (
+                        <span className="text-xs font-mono text-primary">
+                          {progress}%
+                        </span>
+                      )}
+                      {onDeleteFile && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteFile(filename);
+                          }}
+                          title={`Eliminar objetivo ${filename}`}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-all"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground/80">
                     <span className="truncate font-mono">{filename}</span>
                   </div>
                   {!isCorrupted && <Progress value={progress} className="h-1" />}
-                </button>
+                </div>
               );
             })
           )}
@@ -192,7 +226,7 @@ export function AppShell({
       </aside>
 
       {/* Main Panel */}
-      <main className="flex-1 flex flex-col overflow-hidden relative">
+      <main className="flex-1 flex flex-col overflow-hidden relative bg-gradient-to-br from-background via-card to-secondary/40">
         {children}
       </main>
     </div>

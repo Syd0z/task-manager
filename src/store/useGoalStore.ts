@@ -73,6 +73,7 @@ export interface GoalStoreState {
   addNode: (filename: string, parentId: string | null, title: string) => void;
   deleteNode: (filename: string, nodeId: string) => void;
   createDocument: (filename: string, title: string) => GoalDocument;
+  deleteDocument: (filename: string) => void;
 
   // Dynamic bottom-up progress calculators (not persisted to disk)
   getDocumentProgress: (filename: string) => number;
@@ -210,6 +211,22 @@ export const useGoalStore = create<GoalStoreState>()((set, get) => ({
 
     return get().documents[normalizedFilename];
   },
+
+  deleteDocument: (filename) =>
+    set(
+      produce((draft: GoalStoreState) => {
+        delete draft.documents[filename];
+        delete draft.corruptedFiles[filename];
+
+        if (draft.activeFilename === filename) {
+          const validNames = Object.keys(draft.documents).sort();
+          const allRemaining = Array.from(
+            new Set([...validNames, ...Object.keys(draft.corruptedFiles)])
+          ).sort();
+          draft.activeFilename = validNames[0] ?? allRemaining[0] ?? null;
+        }
+      })
+    ),
 
   getDocumentProgress: (filename) => {
     const doc = get().documents[filename];

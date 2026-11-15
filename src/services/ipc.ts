@@ -34,6 +34,16 @@ export async function ipcWriteFile(
   });
 }
 
+export async function ipcDeleteFile(
+  filename: string,
+  dirPath?: string
+): Promise<string> {
+  return invoke<string>("delete_file", {
+    filename,
+    dirPath: dirPath ?? null,
+  });
+}
+
 export async function ipcGitPull(
   dirPath?: string,
   remoteUrl?: string,

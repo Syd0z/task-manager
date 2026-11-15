@@ -2,7 +2,7 @@ pub mod fs;
 pub mod git;
 pub mod sync;
 
-use fs::{read_all_files, write_file};
+use fs::{delete_file, read_all_files, write_file};
 use git::{get_conflict_status, git_commit_and_push, git_pull};
 use sync::SyncEngine;
 
@@ -28,6 +28,7 @@ pub fn run() {
             greet,
             read_all_files,
             write_file,
+            delete_file,
             git_pull,
             git_commit_and_push,
             get_conflict_status

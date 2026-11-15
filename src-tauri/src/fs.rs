@@ -9,13 +9,22 @@ pub struct RawMarkdownFile {
 }
 
 /// Resolves the local storage directory for `.md` files.
-/// Uses `dir_path` if provided, else `GOAL_MANAGER_DATA_DIR` env var,
-/// else defaults to `<current_dir>/goals`.
+/// Priority:
+/// 1. Explicit `dir_path` argument if provided
+/// 2. `GOAL_MANAGER_DATA_DIR` environment variable
+/// 3. `$HOME/Documentos/objetivos` (if `$HOME/Documentos` exists)
+/// 4. `<repo>/goals` fallback
 pub fn resolve_data_dir(dir_path: Option<&str>) -> Result<PathBuf, String> {
     let base = if let Some(custom) = dir_path.filter(|s| !s.trim().is_empty()) {
         PathBuf::from(custom)
-    } else if let Ok(env_dir) = std::env::var("GOAL_MANAGER_DATA_DIR") {
+    } else if let Ok(env_dir) = std::env::var("GOAL_MANAGER_DATA_DIR")
+        && !env_dir.trim().is_empty()
+    {
         PathBuf::from(env_dir)
+    } else if let Ok(home) = std::env::var("HOME")
+        && Path::new(&home).join("Documentos").exists()
+    {
+        Path::new(&home).join("Documentos").join("objetivos")
     } else {
         let cwd = std::env::current_dir()
             .map_err(|e| format!("Failed to resolve current directory: {}", e))?;
@@ -102,6 +111,16 @@ pub fn write_file_to_dir(dir: &Path, filename: &str, content: &str) -> Result<St
     Ok(safe_name)
 }
 
+pub fn delete_file_from_dir(dir: &Path, filename: &str) -> Result<String, String> {
+    let safe_name = sanitize_md_filename(filename)?;
+    let full_path = dir.join(&safe_name);
+    if full_path.exists() {
+        fs::remove_file(&full_path)
+            .map_err(|e| format!("Failed to delete file {}: {}", safe_name, e))?;
+    }
+    Ok(safe_name)
+}
+
 #[tauri::command]
 pub fn read_all_files(dir_path: Option<String>) -> Result<Vec<RawMarkdownFile>, String> {
     let dir = resolve_data_dir(dir_path.as_deref())?;
@@ -124,4 +143,21 @@ pub fn write_file(
     let written = write_file_to_dir(&dir, &filename, &content)?;
     sync_engine.notify_activity(dir, None, None);
     Ok(written)
+}
+
+#[tauri::command]
+pub fn delete_file(
+    filename: String,
+    dir_path: Option<String>,
+    sync_engine: tauri::State<'_, crate::sync::SyncEngine>,
+) -> Result<String, String> {
+    if sync_engine.is_conflict_locked() {
+        return Err(
+            "GIT_CONFLICT_LOCKED: Delete blocked due to unresolved Git conflict.".to_string(),
+        );
+    }
+    let dir = resolve_data_dir(dir_path.as_deref())?;
+    let deleted = delete_file_from_dir(&dir, &filename)?;
+    sync_engine.notify_activity(dir, None, None);
+    Ok(deleted)
 }

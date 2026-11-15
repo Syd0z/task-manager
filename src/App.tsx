@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   CorruptedFileOverlay,
@@ -7,7 +8,12 @@ import {
 import { GoalTree } from "@/components/GoalTree";
 import { Progress } from "@/components/ui/progress";
 import { serializeGoalDocument } from "@/domain/serializer";
-import { ipcGitPull, ipcReadAllFiles, ipcWriteFile } from "@/services/ipc";
+import {
+  ipcDeleteFile,
+  ipcGitPull,
+  ipcReadAllFiles,
+  ipcWriteFile,
+} from "@/services/ipc";
 import { useGoalStore } from "@/store/useGoalStore";
 import "./App.css";
 
@@ -23,6 +29,7 @@ function App() {
   const addNode = useGoalStore((s) => s.addNode);
   const deleteNode = useGoalStore((s) => s.deleteNode);
   const createDocument = useGoalStore((s) => s.createDocument);
+  const deleteDocument = useGoalStore((s) => s.deleteDocument);
   const getDocumentProgress = useGoalStore((s) => s.getDocumentProgress);
 
   const persistDocumentToRust = useCallback(
@@ -92,6 +99,18 @@ function App() {
     void persistDocumentToRust(doc.filename);
   };
 
+  const handleDeleteFile = async (filename: string) => {
+    if (gitConflict) return;
+    deleteDocument(filename);
+    try {
+      await ipcDeleteFile(filename);
+    } catch (err) {
+      if (String(err).includes("GIT_CONFLICT_LOCKED")) {
+        setGitConflict(true);
+      }
+    }
+  };
+
   const activeDoc = activeFilename ? documents[activeFilename] : null;
   const activeProgress = activeFilename
     ? getDocumentProgress(activeFilename)
@@ -100,6 +119,7 @@ function App() {
   return (
     <AppShell
       onCreateFile={handleCreateFile}
+      onDeleteFile={(filename) => void handleDeleteFile(filename)}
       onRefreshFiles={() => void loadWorkspaceFiles()}
     >
       <ViewErrorBoundary
@@ -122,11 +142,11 @@ function App() {
 
         <div className="flex-1 overflow-y-auto p-8">
           {activeDoc ? (
-            <div className="max-w-3xl mx-auto space-y-6">
+            <div className="max-w-3xl mx-auto space-y-6 rounded-xl border border-border bg-card/80 p-6 shadow-2xl backdrop-blur-sm">
               <header className="space-y-3 border-b border-border pb-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <h1 className="text-2xl font-bold tracking-tight">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">
                       {activeDoc.frontmatter.title}
                     </h1>
                     <p className="text-xs font-mono text-muted-foreground mt-1">
@@ -134,13 +154,24 @@ function App() {
                       {activeDoc.frontmatter.created_at}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-bold font-mono">
-                      {activeProgress}%
-                    </span>
-                    <p className="text-xs text-muted-foreground">
-                      Progreso global
-                    </p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <span className="text-2xl font-bold font-mono text-primary drop-shadow-[0_0_8px_rgba(0,255,65,0.35)]">
+                        {activeProgress}%
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        Progreso global
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteFile(activeDoc.filename)}
+                      title="Eliminar este Superobjetivo"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-destructive hover:text-white transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Eliminar objetivo
+                    </button>
                   </div>
                 </div>
                 <Progress value={activeProgress} className="h-2" />

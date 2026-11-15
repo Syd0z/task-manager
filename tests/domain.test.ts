@@ -7,8 +7,6 @@ import {
 } from "../src/domain/progress";
 import { GoalNode } from "../src/domain/schema";
 import { useGoalStore } from "../src/store/useGoalStore";
-import fs from "node:fs";
-import path from "node:path";
 
 describe("Custom MD Parser (parseGoalMarkdown)", () => {
   it("parses valid frontmatter and builds nested GoalNode tree from indentation", () => {
@@ -187,7 +185,6 @@ describe("Bottom-Up Progress Calculator", () => {
 
     expect(calculateNodeProgress(tree.children[0])).toBe(50);
     expect(calculateNodeProgress(tree.children[1])).toBe(100);
-    // Average of 50% and 100% = 75%
     expect(calculateNodeProgress(tree)).toBe(75);
     expect(calculateTreeProgress([tree])).toBe(75);
   });
@@ -197,17 +194,29 @@ describe("Bottom-Up Progress Calculator", () => {
   });
 });
 
-describe("Resilience & Happy Path Store Integration (Task 6.1 & 6.2)", () => {
-  it("ingests valid and corrupted .md files from disk without crashing and isolates corrupted files for the Error Overlay", () => {
-    const goalsDir = path.resolve(import.meta.dirname, "../goals");
-    const validContent = fs.readFileSync(
-      path.join(goalsDir, "roadmap-v1.md"),
-      "utf-8"
-    );
-    const corruptedContent = fs.readFileSync(
-      path.join(goalsDir, "corrupted-goal.md"),
-      "utf-8"
-    );
+describe("Resilience, Happy Path & Goal Deletion Store Integration", () => {
+  it("ingests valid and corrupted .md files without crashing, updates progress optimistically, and supports goal deletion", () => {
+    const validContent = [
+      "---",
+      "id: roadmap-v1",
+      "created_at: 2026-11-15T17:00:00.000Z",
+      "title: Lanzamiento Goal Manager v1.0",
+      "---",
+      "",
+      "- [ ] Arquitectura Local-First",
+      "  - [x] Backend Dumb Pipe en Rust",
+      "  - [ ] Smart Client en TypeScript",
+      "- [x] Sincronización Git Silenciosa",
+    ].join("\n");
+
+    const corruptedContent = [
+      "---",
+      "id: corrupted-goal",
+      "invalid_field: true",
+      "---",
+      "",
+      "- [ ] Este archivo tiene un frontmatter inválido",
+    ].join("\n");
 
     const store = useGoalStore.getState();
     store.ingestRawFiles([
@@ -216,22 +225,23 @@ describe("Resilience & Happy Path Store Integration (Task 6.1 & 6.2)", () => {
     ]);
 
     const nextState = useGoalStore.getState();
-    // Valid file is parsed and its bottom-up progress is calculated dynamically
     expect(nextState.documents["roadmap-v1.md"]).toBeDefined();
     expect(nextState.getDocumentProgress("roadmap-v1.md")).toBe(75);
 
-    // Toggling task updates progress optimistically to 100%
-    const subNodeId = nextState.documents["roadmap-v1.md"].nodes[0].children[1].id;
+    const subNodeId =
+      nextState.documents["roadmap-v1.md"].nodes[0].children[1].id;
     nextState.toggleTask("roadmap-v1.md", subNodeId);
     expect(useGoalStore.getState().getDocumentProgress("roadmap-v1.md")).toBe(
       100
     );
 
-    // Corrupted file does not crash the app and is flagged in corruptedFiles for the Error Boundary Overlay
     expect(nextState.documents["corrupted-goal.md"]).toBeUndefined();
     expect(nextState.corruptedFiles["corrupted-goal.md"]).toMatch(
       /Invalid frontmatter schema/
     );
+
+    // Deleting a goal removes it from the store
+    useGoalStore.getState().deleteDocument("roadmap-v1.md");
+    expect(useGoalStore.getState().documents["roadmap-v1.md"]).toBeUndefined();
   });
 });
-

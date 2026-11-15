@@ -8,10 +8,10 @@ dist/
 build/
 src-tauri/target/
 target/
+goals/
 
 # IDE y SO
 .vscode/
 .idea/
 *.DS_Store
 .env
-goals/
