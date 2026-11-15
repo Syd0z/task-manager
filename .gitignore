@@ -6,9 +6,12 @@ venv/
 node_modules/
 dist/
 build/
+src-tauri/target/
+target/
 
 # IDE y SO
 .vscode/
 .idea/
 *.DS_Store
 .env
+goals/
